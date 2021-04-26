@@ -8,7 +8,7 @@
 import asyncio
 import websockets
 from aioredis import create_connection, Channel
-
+from configparser import ConfigParser
 LEADERBOARD = 'leaderboard'
 
 
@@ -36,14 +36,20 @@ async def browser_server(websocket, path):
         conn.close()
 
 
-async def hello():
-    uri = f'ws://listener-service.dtl.name:8080/{LEADERBOARD}'
+async def hello(url, port):
+    uri = f'ws://{url}:{port}/{LEADERBOARD}'
     async with websockets.connect(uri) as websocket:
         await browser_server(websocket, LEADERBOARD)
 
 if __name__ == '__main__':
+    # instantiate
+    config = ConfigParser()
+
+    # parse existing file
+    config.read('config.ini')
     # Runs a server process on 8767. Just do 'python producer.py'
     loop = asyncio.get_event_loop()
     # loop.set_debug(True)
-    loop.run_until_complete(hello())
+
+    loop.run_until_complete(hello(config.get('main', 'listen_url'), config.get('main', 'local_port')))
     loop.run_forever()

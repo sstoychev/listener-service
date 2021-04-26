@@ -7,23 +7,24 @@ use Predis\Client;
 require __DIR__ . '/vendor/autoload.php';
 
 /**
- * chat.php
- * Send any incoming messages to all connected clients (except sender)
+ * leaderboard.php
+ * Ignore all messages from outside
  */
-class MyChat implements MessageComponentInterface {
+class Leaderboard implements MessageComponentInterface {
     protected $clients;
     protected $predis;
+    public $config;
 
     const LEADERBOARD = 'leaderboard';
 
-    public function __construct() {
+    public function __construct(array $config) {
         $this->clients = new \SplObjectStorage;
         $this->predis = new Client();
+        $this->config = $config;
     }
 
     public function onOpen(ConnectionInterface $conn) {
         $this->clients->attach($conn);
-        echo "Opened connection, Total:".$this->clients->count()."\n";
     }
 
     // Ignore all incomming messages. Clients should not be sending any messages
@@ -31,8 +32,7 @@ class MyChat implements MessageComponentInterface {
     // that there has been update on the scores and we should get the new top
     // players and send them to the clients
     public function onMessage(ConnectionInterface $from, $msg) {
-        echo 'Message from:'. $from->remoteAddress . "-" . $msg . "\n";
-        if ($from->remoteAddress == '62.171.147.115') {
+        if ($from->remoteAddress == $this->config['local_address']) {
             $topPlayers = $this->predis->zrevrange(self::LEADERBOARD, 0, 10, 'WITHSCORES');
 
             $data = [
@@ -57,9 +57,12 @@ class MyChat implements MessageComponentInterface {
     }
 }
 
-$myChat = new MyChat;
+
+// we need the settings in ini so they can be read by python too
+$config = parse_ini_file("config.ini");
+$leaderboard = new Leaderboard($config);
 
 // Run the server application through the WebSocket protocol on port 8080
-$app = new Ratchet\App('listener-service.dtl.name', 8080, '0.0.0.0');
-$app->route('/'.MyChat::LEADERBOARD, $myChat, array('*'));
+$app = new Ratchet\App($config['listen_url'], $config['local_port'], '0.0.0.0');
+$app->route('/'.Leaderboard::LEADERBOARD, $leaderboard, array('*'));
 $app->run();
