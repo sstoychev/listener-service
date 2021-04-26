@@ -1,0 +1,7 @@
+{
+    "require": {
+        "predis/predis-async": "dev-master",
+        "rmccue/requests": "^1.7",
+        "cboden/ratchet": "^0.4.3"
+    }
+}

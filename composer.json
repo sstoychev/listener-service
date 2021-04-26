@@ -1,0 +1,7 @@
+{
+    "require": {
+        "rmccue/requests": "^1.7",
+        "predis/predis": "^1.1",
+        "cboden/ratchet": "^0.4.3"
+    }
+}
