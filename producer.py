@@ -21,7 +21,7 @@ async def subscribe_to_redis(path):
     return channel, conn
 
 
-async def browser_server(websocket, path):
+async def redis_loop(websocket, path):
     channel, conn = await subscribe_to_redis(path)
     try:
         while True:
@@ -36,10 +36,11 @@ async def browser_server(websocket, path):
         conn.close()
 
 
-async def hello(url, port):
+# async loop for websockets and inside async loop for redis
+async def ws_loop(url, port):
     uri = f'ws://{url}:{port}/{LEADERBOARD}'
     async with websockets.connect(uri) as websocket:
-        await browser_server(websocket, LEADERBOARD)
+        await redis_loop(websocket, LEADERBOARD)
 
 if __name__ == '__main__':
     # instantiate
@@ -51,5 +52,5 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     # loop.set_debug(True)
 
-    loop.run_until_complete(hello(config.get('main', 'listen_url'), config.get('main', 'local_port')))
+    loop.run_until_complete(ws_loop(config.get('main', 'listen_url'), config.get('main', 'local_port')))
     loop.run_forever()
