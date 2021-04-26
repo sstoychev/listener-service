@@ -16,7 +16,7 @@ class MyChat implements MessageComponentInterface {
 
     public function __construct() {
         $this->clients = new \SplObjectStorage;
-        $predis = new Client();
+        $this->predis = new Client();
     }
 
     public function onOpen(ConnectionInterface $conn) {
@@ -24,8 +24,22 @@ class MyChat implements MessageComponentInterface {
         echo "Opened connection, Total:".$this->clients->count()."\n";
     }
 
+    // Ignore all incomming messages. Clients should not be sending any messages
+    // The only accepted messages are from the local python script to notify
+    // that there has been update on the scores and we should get the new top
+    // players and send them to the clients
     public function onMessage(ConnectionInterface $from, $msg) {
         echo 'Message from:'. $from->remoteAddress . "-" . $msg . "\n";
+        if ($from->remoteAddress == '62.171.147.115') {
+            $topPlayers = $this->predis->zrevrange('leaderboard', 0, 10, 'WITHSCORES');
+            $msg = print_r($topPlayers, true);
+            echo $msg;
+            foreach ($this->clients as $client) {
+                if ($from != $client) {
+                    $client->send($msg);
+                }
+            }
+        }
     }
 
     public function onClose(ConnectionInterface $conn) {
@@ -34,18 +48,6 @@ class MyChat implements MessageComponentInterface {
 
     public function onError(ConnectionInterface $conn, \Exception $e) {
         $conn->close();
-    }
-
-    public function sendTopPlayers(Client $predis, $chan, $msg) {
-        if ($chan != 'leaderboard') {
-            return;
-        }
-
-        $topPlayers = $predis->zrevrangebyscore('leaderboard', 0, 10);
-        $msg = print_r($topPlayers, true);
-        foreach ($this->clients as $client) {
-            $client->send($msg);
-        }
     }
 }
 
